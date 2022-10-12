@@ -537,14 +537,14 @@ def non_max_suppression(prediction, conf_thres=0.25, iou_thres=0.45, classes=Non
                 conf, j = x[:, 5:].max(1, keepdim=True)
                 x = torch.cat((box, conf, j.float()), 1)[conf.view(-1) > conf_thres]
             else:
-                kpts = x[:, 6:]
-                conf, j = x[:, 5:6].max(1, keepdim=True)
+                kpts = x[:, 5+nc:]
+                conf, j = x[:, 5:5+nc].max(1, keepdim=True)
                 x = torch.cat((box, conf, j.float(), kpts), 1)[conf.view(-1) > conf_thres]
 
 
         # Filter by class
         if classes is not None:
-            x = x[(x[:, 5:6] == torch.tensor(classes, device=x.device)).any(1)]
+            x = x[(x[:, 5:5+nc] == torch.tensor(classes, device=x.device)).any(1)]
 
         # Apply finite constraint
         # if not torch.isfinite(x).all():
@@ -598,13 +598,13 @@ def non_max_suppression_export(prediction, conf_thres=0.25, iou_thres=0.45, clas
         cx, cy, w, h = x[:,0:1], x[:,1:2], x[:,2:3], x[:,3:4]
         obj_conf = x[:, 4:5]
         cls_conf = x[:, 5:5+nc]
-        kpts = x[:, 6:]
+        kpts = x[:, 5+nc:]
         cls_conf = obj_conf * cls_conf  # conf = obj_conf * cls_conf
         # Box (center x, center y, width, height) to (x1, y1, x2, y2)
         box = xywh2xyxy_export(cx, cy, w, h)
         conf, j = cls_conf.max(1, keepdim=True)
         x = torch.cat((box, conf, j.float(), kpts), 1)[conf.view(-1) > conf_thres]
-        c = x[:, 5:6] * (0 if agnostic else max_wh)  # classes
+        c = x[:, 5:5+nc] * (0 if agnostic else max_wh)  # classes
         boxes, scores = x[:, :4] +c , x[:, 4]  # boxes (offset by class), scores
         i = torchvision.ops.nms(boxes, scores, iou_thres)  # NMS
         output[xi] = x[i]
